@@ -10,6 +10,21 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 from functools import partial
 
+def check_point(np_val, pp_val, prec, step_nn):
+    """Helper function to check a single point in the parameter space."""
+    print(f"\rChecking point: np={np_val:.2f}, pp={pp_val:.2f}", end="")
+    for nn_val in np.arange(1, 3 + step_nn, step_nn):
+        # pair_nums = [np48, nn48, pp48, np40, nn40, pp40]
+        pair_nums = [np_val, nn_val, pp_val, 1, 1, 1]
+        r = get_ratios_from_pair_nums(pair_nums)
+        if (abs(r[0] - 1.02) < prec and
+            abs(r[1] - 1.31) < prec and
+            abs(r[2] - 1.17) < prec and
+            r[3] > 0 and
+            r[4] > 0):
+            print()  # New line after finding a valid point
+            return (np_val, pp_val, r)
+    return None
 
 class MainWindow(QMainWindow):
 
@@ -439,21 +454,8 @@ class MainWindow(QMainWindow):
 
         plt.show()
 
-    def check_point(self, np_val, pp_val, prec, step_nn):
-        """Helper function to check a single point in the parameter space."""
-        for nn_val in np.arange(1, 3 + step_nn, step_nn):
-            # pair_nums = [np48, nn48, pp48, np40, nn40, pp40]
-            pair_nums = [np_val, nn_val, pp_val, 1, 1, 1]
-            r = get_ratios_from_pair_nums(pair_nums)
-            if (abs(r[0] - 1.02) < prec and
-                abs(r[1] - 1.31) < prec and
-                abs(r[2] - 1.17) < prec and
-                r[3] > 0 and
-                r[4] > 0):
-                return (np_val, pp_val, r)
-        return None
-
     def createCheckNNRegion(self):
+        print("Starting region check...")
         step = 0.02
         prec = 0.05
         step_nn = 0.1
@@ -468,7 +470,7 @@ class MainWindow(QMainWindow):
         pool = mp.Pool(processes=num_cores)
 
         # Create partial function with fixed parameters
-        check_point_partial = partial(self.check_point, prec=prec, step_nn=step_nn)
+        check_point_partial = partial(check_point, prec=prec, step_nn=step_nn)
 
         # Process points in parallel
         results = pool.starmap(check_point_partial, points)
@@ -482,6 +484,12 @@ class MainWindow(QMainWindow):
         else:
             valid_x, valid_y, ratios = [], [], []
 
+        # Save results to file
+        with open("points.csv", "w") as f:
+            f.write("np48/np40,pp48/pp40,R(e,e'p),R(e,e'n),R(e,e'),R(e,e'np),R(e,e'pp)\n")
+            for x_val, y_val, r in zip(valid_x, valid_y, ratios):
+                f.write(f"{x_val},{y_val},{r[0]},{r[1]},{r[2]},{r[3]},{r[4]}\n")
+        
         # Plot results
         plt.figure()
         plt.scatter(valid_x, valid_y)
@@ -492,11 +500,7 @@ class MainWindow(QMainWindow):
         plt.title("Points with nn48/nn40 in [1,3] satisfying constraints")
         plt.show()
 
-        # Save results to file
-        with open("points.csv", "w") as f:
-            f.write("np48/np40,pp48/pp40,R(e,e'p),R(e,e'n),R(e,e'),R(e,e'np),R(e,e'pp)\n")
-            for x_val, y_val, r in zip(valid_x, valid_y, ratios):
-                f.write(f"{x_val},{y_val},{r[0]},{r[1]},{r[2]},{r[3]},{r[4]}\n")
+        
 
         
 
