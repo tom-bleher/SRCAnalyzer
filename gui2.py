@@ -11,16 +11,21 @@ def check_point(np_val, pp_val, prec, step_nn):
     for nn_val in np.arange(1, 3 + step_nn, step_nn):
         # pair_nums = [np48, nn48, pp48, np40, nn40, pp40]
         pair_nums = [np_val, nn_val, pp_val, 1, 1, 1]
-        r = get_ratios_from_pair_nums(pair_nums)
-        if any(np.isnan(r)) or any(np.isinf(r)):
+        try:
+            r = get_ratios_from_pair_nums(pair_nums)
+            # Convert symbolic expressions to floats
+            r = [float(val) for val in r]
+            if any(np.isnan(r)) or any(np.isinf(r)):
+                continue
+            if (abs(r[0] - 1.02) < prec and
+                abs(r[1] - 1.28) < prec and
+                abs(r[2] - 1.17) < prec and
+                r[3] > 0 and
+                r[4] > 0):
+                print()  # New line after finding a valid point
+                return (np_val, pp_val, r)
+        except (TypeError, ValueError) as e:
             continue
-        if (abs(r[0] - 1.02) < prec and
-            abs(r[1] - 1.28) < prec and
-            abs(r[2] - 1.17) < prec and
-            r[3] > 0 and
-            r[4] > 0):
-            print()  # New line after finding a valid point
-            return (np_val, pp_val, r)
     return None
 
 def check_nn_region():
